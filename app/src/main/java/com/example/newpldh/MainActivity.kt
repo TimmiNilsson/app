@@ -471,9 +471,7 @@ fun settings(drawerState: DrawerState, scope: CoroutineScope, ip: String): Strin
                         modifier = Modifier.size(30.dp),
                         tint = Color.Unspecified
                     )
-
                 }
-
             }
             OutlinedTextField(
                 modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -482,12 +480,12 @@ fun settings(drawerState: DrawerState, scope: CoroutineScope, ip: String): Strin
                 onValueChange = { text = it },
                 label = {Text("Ip address")},
                 colors = TextFieldDefaults.outlinedTextFieldColors(
+                  unfocusedBorderColor = FWAppDarkGreen,
                     focusedBorderColor = FWAppGreen,
-                    unfocusedBorderColor = FWAppDarkGreen)
+                  unfocusedLabelColor = FWAppDarkGrey,
+                    focusedLabelColor = FWAppDarkGrey)
             )
-
         }
-
     }
     return text
 }
