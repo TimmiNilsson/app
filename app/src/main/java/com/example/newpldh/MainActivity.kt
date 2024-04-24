@@ -4,13 +4,16 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
 import android.os.Bundle
+import android.provider.ContactsContract.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +26,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -34,8 +38,11 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +67,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.newpldh.ui.theme.FWAppDarkGreen
 import com.example.newpldh.ui.theme.FWAppDarkGrey
 import com.example.newpldh.ui.theme.FWAppGreen
 import com.example.newpldh.ui.theme.FWAppLightGreen
@@ -98,27 +106,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
-fun isServerUp(serverUrl: String, timeoutMillis: Int): Boolean {
-    return try {
-        val url = URL(serverUrl)
-        val connection = url.openConnection() as HttpURLConnection
-        connection.connectTimeout = timeoutMillis
-        connection.readTimeout = timeoutMillis
-        connection.requestMethod = "GET"
-        val responseCode = connection.responseCode
-        responseCode == HttpURLConnection.HTTP_OK
-    } catch (e: Exception) {
-        false
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Greeting(navController: NavHostController) {
     Box {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
+        var ip by remember { mutableStateOf("10.0.2.2:5000") }
 
         val destinations = listOf(
             "Home" to painterResource(id = R.drawable.home),
@@ -180,13 +174,13 @@ fun Greeting(navController: NavHostController) {
                         Home(drawerState, scope)
                     }
                     composable("Gallery") {
-                        gallery(drawerState, scope)
+                        gallery(drawerState, scope, ip)
                     }
                     composable("Live feed") {
                         liveFeed()
                     }
                     composable("Settings") {
-                        settings()
+                        ip = settings(drawerState, scope, ip)
                     }
                 }
             }
@@ -265,27 +259,14 @@ fun Home(drawerState: DrawerState, scope: CoroutineScope) {
     }
 }
 
-
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@Preview (showSystemUi = true)
-fun galleryPreview(){
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    gallery(drawerState, scope)
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun gallery(drawerState: DrawerState, scope: CoroutineScope) {
+fun gallery(drawerState: DrawerState, scope: CoroutineScope, ip: String) {
     Column {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp) // Adjust the height as needed
+                .height(80.dp)
                 .background(FWAppGreen)
         ) {
             Text(
@@ -301,7 +282,7 @@ fun gallery(drawerState: DrawerState, scope: CoroutineScope) {
                 modifier = Modifier
                     .size(48.dp)
                     .align(Alignment.CenterStart)
-                    .offset(x = 18.dp) // Adjust the offset as needed to center vertically
+                    .offset(x = 18.dp)
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.bars),
@@ -311,7 +292,7 @@ fun gallery(drawerState: DrawerState, scope: CoroutineScope) {
                 )
             }
         }
-        UploadedImagesGrid(modifier = Modifier)
+        UploadedImagesGrid(modifier = Modifier, ip)
     }
 
 }
@@ -322,15 +303,15 @@ sealed class ImageResult {
 }
 
 @Composable
-fun UploadedImagesGrid(modifier: Modifier) {
+fun UploadedImagesGrid(modifier: Modifier, ip: String) {
     val context = LocalContext.current
     var imageUrls by remember { mutableStateOf(emptyList<String>()) }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             try {
-                val ip = "http://10.0.2.2:5000/"
-                val url = URL(ip + "uploaded_images")
+                //val ip = "http://10.0.2.2:5000/"
+                val url = URL("http://" + ip + "/uploaded_images")
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connect()
                 val inputStream = connection.inputStream
@@ -338,7 +319,7 @@ fun UploadedImagesGrid(modifier: Modifier) {
                 val filenames = JSONObject(response).getJSONArray("uploaded_files")
                 val list = mutableListOf<String>()
                 for (i in 0 until filenames.length()) {
-                    list.add(ip + "uploads/" + filenames.getString(i))
+                    list.add("http://" + ip + "/uploads/" + filenames.getString(i))
                 }
                 imageUrls = list
             } catch (e: IOException) {
@@ -403,7 +384,6 @@ private fun LoadImageFromUrl(imageUrl: String) {
         }
         null -> {
             // Loading state - Show loading indicator
-            // You can add a loading indicator here if needed
             Box(modifier = Modifier.size(120.dp)){
                 CircularProgressIndicator(
                     modifier = Modifier
@@ -444,32 +424,74 @@ fun liveFeed() {
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview
 @Composable
-fun settings() {
+fun settingsPreviw(){
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    settings(drawerState, scope, "10.0.2.2:5000")
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun settings(drawerState: DrawerState, scope: CoroutineScope, ip: String): String {
+    var text by remember { mutableStateOf(ip) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(FWAppLightGrey)
-    ){
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp) // Adjust the height as needed
-                .background(FWAppGreen)
-        ){
-            Text(
-                text = "Settings",
+            .background(color = FWAppLightGrey)
+    ) {
+    Column {
+            Box(
                 modifier = Modifier
-                    .align(Alignment.Center),
-                fontSize = 20.sp,
-                fontFamily = interFamily,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .background(FWAppGreen)
+            ) {
+                Text(
+                    text = "Settings",
+                    modifier = Modifier
+                        .align(Alignment.Center),
+                    fontSize = 20.sp,
+                    fontFamily = interFamily, fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+                IconButton(
+                    onClick = { scope.launch { drawerState.open() } },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .align(Alignment.CenterStart)
+                        .offset(x = 18.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.bars),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp),
+                        tint = Color.Unspecified
+                    )
+
+                }
+
+            }
+            OutlinedTextField(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                value = text,
+                singleLine = true,
+                onValueChange = { text = it },
+                label = {Text("Ip address")},
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = FWAppGreen,
+                    unfocusedBorderColor = FWAppDarkGreen)
             )
+
         }
+
     }
+    return text
 }
+
 
 
 
