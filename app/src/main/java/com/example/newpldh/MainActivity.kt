@@ -232,30 +232,16 @@ fun Home(drawerState: DrawerState, scope: CoroutineScope) {
                 .clip(shape = RoundedCornerShape(50.dp))
                 .background(FWAppDarkGrey)
                 .align(Alignment.Center)
-        ) {
-            var text by remember { mutableStateOf("") }
-
-            LaunchedEffect(Unit) {
-                val isConnected = withContext(Dispatchers.IO) {
-                    try {
-                        InetAddress.getByName("http://10.0.2.2:5000/").isReachable(1000)
-                    } catch (e: IOException) {
-                        false
-                    }
-                }
-                text = if (isConnected) "Connected" else "NOT CONNECTED"
-            }
-
-
+        )
             Text(
-                text = text,
+                text = "Press button in the top left \nto open the menu",
                 modifier = Modifier.align(Alignment.Center),
                 fontSize = 20.sp,
                 fontFamily = interFamily,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
             )
-        }
+
     }
 }
 
@@ -431,7 +417,7 @@ fun liveFeed() {
 fun settingsPreviw(){
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    settings(drawerState, scope, "10.0.2.2:5000")
+    Home(drawerState, scope)
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
